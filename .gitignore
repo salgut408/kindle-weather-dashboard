@@ -1,3 +1,8 @@
 cache/
 *.log
 .DS_Store
+
+# character artwork (prototype, adult aesthetic) — kept local; not auto-published
+assets/character/**/*.png
+assets/character/references/
+assets/character/PACK_README.txt

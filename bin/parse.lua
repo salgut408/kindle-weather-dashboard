@@ -79,6 +79,8 @@ put("CUR_HUM",   round(num(cur.relative_humidity_2m, 0)))
 put("CUR_WIND",  round(num(cur.wind_speed_10m, 0)))
 putq("CUR_COND", wx(num(cur.weather_code, -1)))
 putq("CUR_ICON", utf8(wxicon(num(cur.weather_code, -1), num(cur.is_day, 1))))
+put("CUR_CODE",  num(cur.weather_code, -1))   -- raw WMO code (for outfit picker)
+put("CUR_ISDAY", num(cur.is_day, 1))          -- 1 day / 0 night
 local cts = num(cur.time, os.time())
 putq("CUR_TIME", ldate(cts, "%-I:%M %p"))
 putq("CUR_DATE", string.upper(ldate(cts, "%a %-d %b")))

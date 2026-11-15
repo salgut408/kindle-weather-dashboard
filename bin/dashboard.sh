@@ -28,6 +28,25 @@ STALE=0
 [ "$FETCH" -eq 10 ] && STALE=1
 export STALE
 
-# 4. render
+# 4. pick the character outfit (SELECTION layer — independent of rendering).
+#    Weather situation -> an image path. Never blocks the weather dashboard.
+CHAR_IMG=""
+if [ "${CHAR_ENABLED:-0}" = "1" ]; then
+  CHAR_OUT=$(WIND_THRESH="$WIND_THRESH" HARD_WIND="$HARD_WIND" HARD_WIND_SHIFT="$HARD_WIND_SHIFT" \
+    OUTFIT_HISTORY_N="$OUTFIT_HISTORY_N" OUTFIT_STABILITY_HOURS="$OUTFIT_STABILITY_HOURS" \
+    LD_LIBRARY_PATH="$LUAJIT_LIBS" "$LUAJIT" "$ROOT/bin/pick-outfit.lua" "$ROOT" "$CACHE_DIR/data.env" \
+    2>>"$LOG_FILE")
+  CHAR_IMG=$(echo "$CHAR_OUT" | sed -n 's/^CHAR_IMG="\(.*\)"$/\1/p')
+fi
+
+# 5. render weather TEXT (FBInk), leaving the character slot empty
 "$ROOT/bin/render.sh"
-echo "$(date '+%Y-%m-%d %H:%M:%S') render ok (stale=$STALE)" >> "$LOG_FILE"
+
+# 6. blit the character into its slot with eips (FBInk here is Image=No).
+#    Dashboard stays usable if the asset is missing.
+if [ -n "$CHAR_IMG" ] && [ -f "$ROOT/$CHAR_IMG" ]; then
+  "$EIPS" -N 0 -g "$ROOT/$CHAR_IMG" -x "$CHAR_X" -y "$CHAR_Y" >/dev/null 2>&1
+  echo "$(date '+%Y-%m-%d %H:%M:%S') render ok (stale=$STALE, char=$CHAR_IMG)" >> "$LOG_FILE"
+else
+  echo "$(date '+%Y-%m-%d %H:%M:%S') render ok (stale=$STALE, no character)" >> "$LOG_FILE"
+fi

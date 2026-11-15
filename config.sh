@@ -35,3 +35,15 @@ F_BOLD="/usr/java/lib/fonts/Amazon-Ember-Bold.ttf"
 F_MED="/usr/java/lib/fonts/Amazon-Ember-Medium.ttf"
 F_REG="/usr/java/lib/fonts/Amazon-Ember-Regular.ttf"
 F_ICON="/mnt/us/koreader/fonts/nerdfonts/symbols.ttf"   # weather glyphs
+
+# ---- Character (weather-dependent outfit) ----
+EIPS="/usr/sbin/eips"                 # native image tool (FBInk here is Image=No)
+CHAR_ENABLED="1"                      # 0 = weather-only dashboard
+CHAR_DIR="$ASSET_DIR/character"
+CHAR_X="726"                          # slot top-left on screen (eips -x -y), 480x760 art
+CHAR_Y="150"
+WIND_THRESH="16"                      # mph -> "windy" outfit preference
+HARD_WIND="28"                        # mph -> extreme: shift one band colder
+HARD_WIND_SHIFT="1"                   # 1 = enable the extreme-wind shift
+OUTFIT_HISTORY_N="5"                  # recent-outfit memory (avoid repeats)
+OUTFIT_STABILITY_HOURS="3"            # keep the same outfit while weather is unchanged
