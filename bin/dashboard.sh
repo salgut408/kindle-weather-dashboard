@@ -23,11 +23,6 @@ if ! LD_LIBRARY_PATH="$LUAJIT_LIBS" "$LUAJIT" "$ROOT/bin/parse.lua" "$ROOT" "$HO
   exit 2
 fi
 
-# 2b. NFL scoreboard (optional widget — never blocks the weather dashboard)
-"$ROOT/bin/fetch-nfl.sh" >/dev/null 2>&1
-LD_LIBRARY_PATH="$LUAJIT_LIBS" "$LUAJIT" "$ROOT/bin/parse-nfl.lua" "$ROOT" "$NFL_COUNT" \
-      >> "$CACHE_DIR/data.env" 2>>"$LOG_FILE" || true
-
 # 3. stale flag (fetch failed but we rendered from old cache)
 STALE=0
 [ "$FETCH" -eq 10 ] && STALE=1

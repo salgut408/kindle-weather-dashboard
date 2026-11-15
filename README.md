@@ -2,22 +2,16 @@
 
 A clean, Swiss-typographic weather dashboard for a **jailbroken Kindle Paperwhite
 (11th gen / PW5, 1236×1648 E-Ink)**. It fetches live weather from the free
-[Open-Meteo](https://open-meteo.com) API, an NFL scoreboard from ESPN, and renders
-them on-device with crisp TrueType type — no app, no cloud service, just shell
-scripts and tools already present on a jailbroken Kindle.
+[Open-Meteo](https://open-meteo.com) API and renders it on-device with crisp
+TrueType type — no app, no cloud service, just shell scripts and tools already
+present on a jailbroken Kindle.
 
-<table>
-<tr>
-<td align="center"><img src="docs/preview.png" width="100%"><br><sub><b>Dark mode</b> — full dashboard with NFL scoreboard</sub></td>
-<td align="center"><img src="docs/light.png" width="100%"><br><sub><b>Light mode</b> — the black-on-white "paper" look</sub></td>
-</tr>
-</table>
+<p align="center"><img src="docs/preview.png" width="420"><br><sub>Black-on-white "paper" look: city, current temperature + weather icon, hourly row, 5-day forecast</sub></p>
 
 ## Features
 - Current temperature, condition, feels-like, hi/lo, humidity, wind
 - Day/night weather **icons** (Nerd Font glyphs)
 - Hourly forecast (next 6 hours) and a 5-day forecast
-- NFL scoreboard (this week's games, live/final scores) via ESPN
 - **Auto-refresh** every 30 min, with an offline cache fallback (shows last-known
   data if Wi-Fi drops)
 - **Always-on** dedicated-display mode (keeps the dashboard on screen)
@@ -33,10 +27,9 @@ curl ──► cache/weather.json ──► luajit parse.lua ──► cache/dat
 ```
 
 - **`bin/fetch.sh`** — `curl` the Open-Meteo API, cache the JSON atomically.
-- **`bin/fetch-nfl.sh`** — `curl` the ESPN NFL scoreboard.
-- **`bin/parse.lua` / `bin/parse-nfl.lua`** — decode the JSON with **luajit** (plus a
-  tiny bundled `assets/json.lua`), compute display values (rounding, weekday names,
-  icon codepoints), emit a flat `KEY=VALUE` file.
+- **`bin/parse.lua`** — decode the JSON with **luajit** (plus a tiny bundled
+  `assets/json.lua`), compute display values (rounding, weekday names, icon
+  codepoints), emit a flat `KEY=VALUE` file.
 - **`bin/render.sh`** — lay the values out on a grid using **FBInk**'s TrueType
   rendering (`fbink -t`). Change this file to change the design.
 - **`bin/dashboard.sh`** — orchestrates fetch → parse → render with cache fallback.
@@ -93,7 +86,6 @@ how many hourly columns and NFL games to show, fonts, and all on-device paths.
 
 ## Credits & inspiration
 - **Weather data:** [Open-Meteo](https://open-meteo.com) — free, no API key.
-- **NFL scoreboard:** ESPN's public scoreboard API.
 - **E-Ink rendering:** [FBInk](https://github.com/NiLuJe/FBInk) by NiLuJe.
 - **Fonts:** Amazon Ember (on-device) for type; weather glyphs from
   [Nerd Fonts](https://www.nerdfonts.com/) (Weather Icons by Erik Flowers).
@@ -103,4 +95,4 @@ how many hourly columns and NFL games to show, fonts, and all on-device paths.
 - Developed with **Claude Code**.
 
 ## License
-MIT — see [LICENSE](LICENSE). Not affiliated with Amazon, Open-Meteo, or ESPN.
+MIT — see [LICENSE](LICENSE). Not affiliated with Amazon or Open-Meteo.

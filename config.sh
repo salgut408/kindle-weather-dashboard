@@ -10,7 +10,6 @@ WIND_UNIT="mph"
 PRECIP_UNIT="inch"
 FORECAST_DAYS="5"
 HOURLY_COUNT="6"          # how many hourly columns to show
-NFL_COUNT="14"            # how many NFL games to show (2-column layout)
 
 # ---- On-Kindle paths (deploy target) ----
 DASH_ROOT="/mnt/us/dashboard"
