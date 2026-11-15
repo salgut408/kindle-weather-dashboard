@@ -5,7 +5,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 . "$ROOT/config.sh"
 mkdir -p "$CACHE_DIR" "$(dirname "$LOG_FILE")"
 
-URL="https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&timezone=${TZ_NAME}&temperature_unit=${TEMP_UNIT}&wind_speed_unit=${WIND_UNIT}&precipitation_unit=${PRECIP_UNIT}&timeformat=unixtime&forecast_days=${FORECAST_DAYS}&current=temperature_2m,apparent_temperature,relative_humidity_2m,is_day,precipitation,weather_code,wind_speed_10m&hourly=temperature_2m,precipitation_probability,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset"
+URL="https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&timezone=${TZ_NAME}&temperature_unit=${TEMP_UNIT}&wind_speed_unit=${WIND_UNIT}&precipitation_unit=${PRECIP_UNIT}&timeformat=unixtime&forecast_days=${FORECAST_DAYS}&current=temperature_2m,apparent_temperature,relative_humidity_2m,is_day,precipitation,weather_code,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,precipitation_probability,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset"
 
 TMP="$CACHE_DIR/weather.tmp.$$"
 if curl -s --max-time 20 -o "$TMP" "$URL" && grep -q '"current"' "$TMP" 2>/dev/null; then

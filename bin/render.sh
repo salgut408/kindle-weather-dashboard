@@ -28,11 +28,15 @@ d "$F_MED"   28 150 "$M" "$CUR_DATE   ·   $CUR_TIME"
 # ===== HERO (left column; right-upper is the character slot) =====
 d "$F_HEAVY" 260 222 "$M" "${CUR_TEMP}°"
 d "$F_ICON"  110 250 500 "$CUR_ICON"
-d "$F_BOLD"  42 512 "$M" "$CUR_COND"
-d "$F_MED"   32 578 "$M" "FEELS ${CUR_FEELS}°"
-d "$F_MED"   32 625 "$M" "H ${TODAY_HI}°    L ${TODAY_LO}°"
-d "$F_REG"   28 675 "$M" "HUMIDITY ${CUR_HUM}%"
-d "$F_REG"   28 713 "$M" "WIND ${CUR_WIND} MPH"
+d "$F_BOLD"  46 508 "$M" "$CUR_COND"
+d "$F_MED"   32 584 "$M" "FEELS ${CUR_FEELS}°"
+d "$F_MED"   32 632 "$M" "H ${TODAY_HI}°    L ${TODAY_LO}°"
+# details block — flows down to meet HOURLY (no dead zone)
+WLINE="WIND ${CUR_WIND} MPH"; [ -n "$CUR_WDIR" ] && WLINE="WIND ${CUR_WIND} MPH ${CUR_WDIR}"
+d "$F_REG"   28 702 "$M" "HUMIDITY ${CUR_HUM}%"
+d "$F_REG"   28 742 "$M" "$WLINE"
+[ -n "$SUNRISE" ] && d "$F_REG" 28 816 "$M" "SUNRISE   ${SUNRISE}"
+[ -n "$SUNSET" ]  && d "$F_REG" 28 856 "$M" "SUNSET   ${SUNSET}"
 
 # ===== HOURLY (full width, below the character slot) =====
 d "$F_BOLD" 28 948 "$M" "HOURLY"

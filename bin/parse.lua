@@ -41,6 +41,13 @@ local WX = {
 }
 local function wx(code) return WX[code] or "—" end
 
+-- wind bearing (degrees) -> 8-point compass label
+local function compass(deg)
+  if type(deg) ~= "number" then return "" end
+  local dirs = { "N","NE","E","SE","S","SW","W","NW" }
+  return dirs[(math.floor((deg + 22.5) / 45) % 8) + 1]
+end
+
 -- UTF-8 encode a codepoint (for Nerd Font weather glyphs)
 local function utf8(cp)
   if cp < 0x80 then return string.char(cp) end
@@ -77,6 +84,7 @@ put("CUR_TEMP",  round(num(cur.temperature_2m, 0)))
 put("CUR_FEELS", round(num(cur.apparent_temperature, 0)))
 put("CUR_HUM",   round(num(cur.relative_humidity_2m, 0)))
 put("CUR_WIND",  round(num(cur.wind_speed_10m, 0)))
+putq("CUR_WDIR", compass(cur.wind_direction_10m))
 putq("CUR_COND", wx(num(cur.weather_code, -1)))
 putq("CUR_ICON", utf8(wxicon(num(cur.weather_code, -1), num(cur.is_day, 1))))
 put("CUR_CODE",  num(cur.weather_code, -1))   -- raw WMO code (for outfit picker)
@@ -90,6 +98,10 @@ if type(d) == "table" and type(d.time) == "table" then
   put("TODAY_HI",  round(num((d.temperature_2m_max or {})[1])))
   put("TODAY_LO",  round(num((d.temperature_2m_min or {})[1])))
   put("TODAY_POP", round(num((d.precipitation_probability_max or {})[1], 0)))
+  local sr = num((d.sunrise or {})[1])
+  local ss = num((d.sunset or {})[1])
+  if sr then putq("SUNRISE", ldate(sr, "%-I:%M %p")) end
+  if ss then putq("SUNSET",  ldate(ss, "%-I:%M %p")) end
 end
 
 -- hourly: start at the first slot >= current time
