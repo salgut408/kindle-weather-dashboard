@@ -73,7 +73,7 @@ Change the refresh interval: `REFRESH_MIN=60 .../dashboard-loop.sh start`.
 
 ## Configuration (`config.sh`)
 Location (`LAT`/`LON`/`TZ_NAME`), units (`TEMP_UNIT`/`WIND_UNIT`/`PRECIP_UNIT`),
-how many hourly columns and NFL games to show, fonts, and all on-device paths.
+how many hourly columns to show, fonts, and all on-device paths.
 
 ## Notes & limitations
 - **Dark mode:** the device's global dark mode inverts the panel; the design is
