@@ -74,6 +74,12 @@ local function weekday(iso)
   if not y then return "" end
   return string.upper(os.date("!%a", os.time({ year = y, month = m, day = d, hour = 12 })))
 end
+-- "2026-11-17T06:00:00-06:00" -> "11/17"
+local function monthday(iso)
+  local m, d = iso:match("^%d+%-(%d+)%-(%d+)")
+  if not m then return "" end
+  return string.format("%d/%d", tonumber(m), tonumber(d))
+end
 
 -- convert a UTC ISO time (e.g. 2026-11-15T22:29:00+00:00) to local "H:MM AM/PM"
 local function utc_to_local(iso, tzh)
@@ -151,7 +157,7 @@ end
 
 -- 5-day: pair each daytime period (high) with the following night (low)
 do
-  local DY, HI, LO, DP = {}, {}, {}, {}
+  local DY, DD, HI, LO, DP = {}, {}, {}, {}, {}
   local i = 1
   while i <= #dp and #DY < 5 do
     local p = dp[i]
@@ -165,14 +171,16 @@ do
         pop = math.max(pop, num((np.probabilityOfPrecipitation or {}).value, 0))
         i = i + 2
       else i = i + 1 end
-      DY[#DY+1] = weekday(p.startTime or ""); HI[#HI+1] = hi; LO[#LO+1] = lo; DP[#DP+1] = round(pop)
+      DY[#DY+1] = weekday(p.startTime or ""); DD[#DD+1] = monthday(p.startTime or "")
+      HI[#HI+1] = hi; LO[#LO+1] = lo; DP[#DP+1] = round(pop)
     else i = i + 1 end
   end
   put("DAILY_N", #DY)
-  putq("D_DAY", table.concat(DY, " "))
-  putq("D_HI",  table.concat(HI, " "))
-  putq("D_LO",  table.concat(LO, " "))
-  putq("D_POP", table.concat(DP, " "))
+  putq("D_DAY",  table.concat(DY, " "))
+  putq("D_DATE", table.concat(DD, " "))
+  putq("D_HI",   table.concat(HI, " "))
+  putq("D_LO",   table.concat(LO, " "))
+  putq("D_POP",  table.concat(DP, " "))
 end
 
 io.write(table.concat(out, "\n"), "\n")

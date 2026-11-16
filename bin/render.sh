@@ -61,6 +61,7 @@ if [ "$DN" -gt 0 ]; then
   while [ "$i" -le "$DN" ]; do
     y=$(( 1240 + (i-1)*68 ))
     d "$F_BOLD" 38 "$y"     "$M" "$(col "$D_DAY" "$i")"
+    d "$F_REG"  28 $((y+8)) 200 "$(col "$D_DATE" "$i")"
     d "$F_MED"  38 "$y"     360 "$(col "$D_HI" "$i")°"
     d "$F_REG"  38 "$y"     490 "$(col "$D_LO" "$i")°"
     d "$F_REG"  28 $((y+6)) 660 "$(col "$D_POP" "$i")%  PRECIP"
