@@ -22,7 +22,7 @@ col() { echo "$1" | cut -d' ' -f"$2"; }
 "$F" -q -c >/dev/null 2>&1
 
 # ===== HEADER (left) =====
-d "$F_HEAVY" 72 56  "$M" "CHICAGO"
+d "$F_HEAVY" 72 56  "$M" "${CITY:-CHICAGO}"
 d "$F_MED"   28 150 "$M" "$CUR_DATE   ·   $CUR_TIME"
 
 # ===== HERO (left column; right-upper is the character slot) =====

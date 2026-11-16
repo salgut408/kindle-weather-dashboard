@@ -17,7 +17,7 @@ if [ "$FETCH" -eq 1 ]; then
 fi
 
 # 2. parse cached JSON -> data.env
-if ! LD_LIBRARY_PATH="$LUAJIT_LIBS" "$LUAJIT" "$ROOT/bin/parse.lua" "$ROOT" "$HOURLY_COUNT" \
+if ! LD_LIBRARY_PATH="$LUAJIT_LIBS" "$LUAJIT" "$ROOT/bin/parse.lua" "$ROOT" "$HOURLY_COUNT" "$LAT" "$LON" \
       > "$CACHE_DIR/data.env" 2>>"$LOG_FILE"; then
   echo "$(date '+%Y-%m-%d %H:%M:%S') parse FAILED" >> "$LOG_FILE"
   exit 2
@@ -50,3 +50,6 @@ if [ -n "$CHAR_IMG" ] && [ -f "$ROOT/$CHAR_IMG" ]; then
 else
   echo "$(date '+%Y-%m-%d %H:%M:%S') render ok (stale=$STALE, no character)" >> "$LOG_FILE"
 fi
+
+# keep the log bounded (a full disk is what corrupted things before)
+if [ -f "$LOG_FILE" ]; then tail -n 400 "$LOG_FILE" > "$LOG_FILE.tmp" 2>/dev/null && mv "$LOG_FILE.tmp" "$LOG_FILE"; fi

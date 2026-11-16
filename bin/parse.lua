@@ -1,124 +1,147 @@
--- parse.lua — DATA LAYER: decode cached Open-Meteo JSON into flat KEY=VALUE
--- lines (a shell-sourceable "data.env") for the renderer. Keeps all data
--- shaping out of the view layer.
+-- parse.lua — DATA LAYER: decode cached NWS JSON (obs/hourly/daily) into a flat
+-- KEY=VALUE "data.env" for the renderer + the outfit picker. Emits the same keys
+-- the Open-Meteo version did, so render.sh and pick-outfit.lua are unchanged.
 -- usage: luajit parse.lua <DASH_ROOT> <HOURLY_COUNT>
+local root     = arg[1] or "/mnt/us/dashboard"
+local hours_n  = tonumber(arg[2] or "6")
+package.path   = root .. "/assets/?.lua;" .. package.path
+local json     = require("json")
 
-local root = arg[1] or "/mnt/us/dashboard"
-local hours_n = tonumber(arg[2] or "6")
-package.path = root .. "/assets/?.lua;" .. package.path
-local json = require("json")
-
-local f = io.open(root .. "/cache/weather.json", "r")
-if not f then io.stderr:write("parse: no cache file\n"); os.exit(2) end
-local raw = f:read("*a"); f:close()
-
-local ok, data = pcall(json.decode, raw)
-if not ok or type(data) ~= "table" or type(data.current) ~= "table" then
-  io.stderr:write("parse: bad json\n"); os.exit(3)
+local function readjson(p)
+  local f = io.open(p, "r"); if not f then return nil end
+  local s = f:read("*a"); f:close()
+  local ok, d = pcall(json.decode, s)
+  if ok then return d end
 end
+local obs    = readjson(root .. "/cache/obs.json")
+local hourly = readjson(root .. "/cache/hourly.json")
+local daily  = readjson(root .. "/cache/daily.json")
+if not (obs and hourly and daily) then io.stderr:write("parse: missing NWS cache\n"); os.exit(2) end
 
--- helpers ------------------------------------------------------------------
 local function num(x, d) if type(x) == "number" then return x else return d end end
-local function round(x)
-  if type(x) ~= "number" then return "" end
-  return math.floor(x + 0.5)
-end
-local off = num(data.utc_offset_seconds, 0)
-local function ldate(ts, fmt) return os.date("!" .. fmt, ts + off) end
-
--- WMO weather code -> short uppercase label
-local WX = {
-  [0]="CLEAR",[1]="MAINLY CLEAR",[2]="PARTLY CLOUDY",[3]="OVERCAST",
-  [45]="FOG",[48]="RIME FOG",
-  [51]="LIGHT DRIZZLE",[53]="DRIZZLE",[55]="HEAVY DRIZZLE",
-  [56]="FREEZING DRIZZLE",[57]="FREEZING DRIZZLE",
-  [61]="LIGHT RAIN",[63]="RAIN",[65]="HEAVY RAIN",
-  [66]="FREEZING RAIN",[67]="FREEZING RAIN",
-  [71]="LIGHT SNOW",[73]="SNOW",[75]="HEAVY SNOW",[77]="SNOW GRAINS",
-  [80]="RAIN SHOWERS",[81]="RAIN SHOWERS",[82]="HEAVY SHOWERS",
-  [85]="SNOW SHOWERS",[86]="SNOW SHOWERS",
-  [95]="THUNDERSTORM",[96]="THUNDERSTORM",[99]="THUNDERSTORM",
-}
-local function wx(code) return WX[code] or "—" end
-
--- wind bearing (degrees) -> 8-point compass label
+local function round(x) if type(x) ~= "number" then return "" end return math.floor(x + 0.5) end
+local function c2f(c) if type(c) ~= "number" then return nil end return c * 9 / 5 + 32 end
+local function kmh2mph(k) if type(k) ~= "number" then return 0 end return k * 0.621371 end
 local function compass(deg)
   if type(deg) ~= "number" then return "" end
   local dirs = { "N","NE","E","SE","S","SW","W","NW" }
   return dirs[(math.floor((deg + 22.5) / 45) % 8) + 1]
 end
-
--- UTF-8 encode a codepoint (for Nerd Font weather glyphs)
 local function utf8(cp)
   if cp < 0x80 then return string.char(cp) end
-  if cp < 0x800 then
-    return string.char(0xC0 + math.floor(cp/0x40), 0x80 + cp%0x40)
-  end
-  return string.char(0xE0 + math.floor(cp/0x1000),
-                     0x80 + math.floor(cp/0x40) % 0x40,
-                     0x80 + cp % 0x40)
+  return string.char(0xE0 + math.floor(cp/0x1000), 0x80 + math.floor(cp/0x40)%0x40, 0x80 + cp%0x40)
 end
 
--- WMO code (+ day/night) -> Nerd Font weather glyph codepoint
-local function wxicon(c, day)
-  if c == 0 or c == 1 then return day == 1 and 0xE30D or 0xE32B  -- clear
-  elseif c == 2 then return 0xE302                               -- partly cloudy
-  elseif c == 3 then return 0xE312                               -- overcast
-  elseif c == 45 or c == 48 then return 0xE313                   -- fog
-  elseif c >= 51 and c <= 57 then return 0xE31B                  -- drizzle
-  elseif c >= 61 and c <= 67 then return 0xE318                  -- rain
-  elseif c >= 71 and c <= 77 then return 0xE31A                  -- snow
-  elseif c >= 80 and c <= 82 then return 0xE319                  -- rain showers
-  elseif c >= 85 and c <= 86 then return 0xE31A                  -- snow showers
-  elseif c >= 95 then return 0xE31D                              -- thunderstorm
-  else return 0xE33D end                                         -- default: cloud
+-- NWS "shortForecast" text -> {label, wmo_code, day_glyph, night_glyph}
+local function classify(txt)
+  txt = string.lower(txt or "")
+  local function has(p) return txt:find(p, 1, true) ~= nil end
+  if has("thunder")                           then return "THUNDERSTORM", 95, 0xE31D, 0xE31D
+  elseif has("snow") or has("flurr") or has("sleet") or has("wintry") or has("ice")
+                                              then return "SNOW", 73, 0xE31A, 0xE31A
+  elseif has("freezing")                      then return "FREEZING RAIN", 66, 0xE318, 0xE318
+  elseif has("rain") or has("shower") or has("drizzle")
+                                              then return "RAIN", 61, 0xE318, 0xE318
+  elseif has("fog") or has("haze") or has("mist") or has("smoke")
+                                              then return "FOG", 45, 0xE313, 0xE313
+  elseif has("partly") or has("mostly sunny") or has("mostly clear")
+                                              then return "PARTLY CLOUDY", 2, 0xE302, 0xE32B
+  elseif has("mostly cloudy") or has("overcast") or has("cloudy")
+                                              then return "CLOUDY", 3, 0xE312, 0xE312
+  elseif has("clear") or has("sunny") or has("fair")
+                                              then return "CLEAR", 0, 0xE30D, 0xE32B
+  else return "—", 3, 0xE33D, 0xE33D end
 end
 
--- output -------------------------------------------------------------------
+-- local tz offset (hours) parsed from an NWS startTime like ...T22:00:00-06:00
+local function tz_offset(iso)
+  local sign, h = iso:match("([%+%-])(%d%d):%d%d$")
+  if not sign then return 0 end
+  local off = tonumber(h); if sign == "-" then off = -off end
+  return off
+end
+-- "2026-11-15T22:00:00-06:00" -> "10PM"
+local function hour_label(iso)
+  local h = tonumber(iso:match("T(%d%d):"))
+  if not h then return "" end
+  local ap = h < 12 and "AM" or "PM"
+  local h12 = h % 12; if h12 == 0 then h12 = 12 end
+  return string.format("%d%s", h12, ap)
+end
+-- weekday abbrev from an ISO date (its own local day)
+local function weekday(iso)
+  local y, m, d = iso:match("^(%d+)%-(%d+)%-(%d+)")
+  if not y then return "" end
+  return string.upper(os.date("!%a", os.time({ year = y, month = m, day = d, hour = 12 })))
+end
+
+-- convert a UTC ISO time (e.g. 2026-11-15T22:29:00+00:00) to local "H:MM AM/PM"
+local function utc_to_local(iso, tzh)
+  local h, m = iso:match("T(%d%d):(%d%d)")
+  if not h then return "" end
+  local mins = (tonumber(h) * 60 + tonumber(m) + tzh * 60) % 1440
+  local hh = math.floor(mins / 60); local mm = mins % 60
+  local ap = hh < 12 and "AM" or "PM"; local h12 = hh % 12; if h12 == 0 then h12 = 12 end
+  return string.format("%d:%02d %s", h12, mm, ap)
+end
+
+-- ---------- build output ----------
 local out = {}
 local function put(k, v) out[#out + 1] = k .. "=" .. tostring(v) end
 local function putq(k, v) out[#out + 1] = k .. '="' .. tostring(v):gsub('"', "") .. '"' end
 
-local cur = data.current
-put("CUR_TEMP",  round(num(cur.temperature_2m, 0)))
-put("CUR_FEELS", round(num(cur.apparent_temperature, 0)))
-put("CUR_HUM",   round(num(cur.relative_humidity_2m, 0)))
-put("CUR_WIND",  round(num(cur.wind_speed_10m, 0)))
-putq("CUR_WDIR", compass(cur.wind_direction_10m))
-putq("CUR_COND", wx(num(cur.weather_code, -1)))
-putq("CUR_ICON", utf8(wxicon(num(cur.weather_code, -1), num(cur.is_day, 1))))
-put("CUR_CODE",  num(cur.weather_code, -1))   -- raw WMO code (for outfit picker)
-put("CUR_ISDAY", num(cur.is_day, 1))          -- 1 day / 0 night
-local cts = num(cur.time, os.time())
-putq("CUR_TIME", ldate(cts, "%-I:%M %p"))
-putq("CUR_DATE", string.upper(ldate(cts, "%a %-d %b")))
+local op = obs.properties or {}
+local hp = (hourly.properties or {}).periods or {}
+local dp = (daily.properties or {}).periods or {}
+local tzh = tz_offset((hp[1] or {}).startTime or "-06:00")
+local now_day = (hp[1] or {}).isDaytime   -- NWS tells us day/night for the current hour
 
-local d = data.daily
-if type(d) == "table" and type(d.time) == "table" then
-  put("TODAY_HI",  round(num((d.temperature_2m_max or {})[1])))
-  put("TODAY_LO",  round(num((d.temperature_2m_min or {})[1])))
-  put("TODAY_POP", round(num((d.precipitation_probability_max or {})[1], 0)))
-  local sr = num((d.sunrise or {})[1])
-  local ss = num((d.sunset or {})[1])
-  if sr then putq("SUNRISE", ldate(sr, "%-I:%M %p")) end
-  if ss then putq("SUNSET",  ldate(ss, "%-I:%M %p")) end
+-- current conditions (observed)
+local t_c = num((op.temperature or {}).value)
+local feels_c = num((op.windChill or {}).value) or num((op.heatIndex or {}).value)
+local cond_txt = (hp[1] or {}).shortForecast or op.textDescription or ""
+local label, code, gday, gnight = classify(cond_txt)
+put("CUR_TEMP",  round(c2f(t_c) or 0))
+put("CUR_FEELS", round(c2f(feels_c) or c2f(t_c) or 0))
+put("CUR_HUM",   round(num((op.relativeHumidity or {}).value, 0)))
+put("CUR_WIND",  round(kmh2mph(num((op.windSpeed or {}).value, 0))))
+putq("CUR_WDIR", compass(num((op.windDirection or {}).value)))
+putq("CUR_COND", label)
+put("CUR_CODE",  code)
+put("CUR_ISDAY", now_day and 1 or 0)
+putq("CUR_ICON", utf8(now_day and gday or gnight))
+putq("CUR_TIME", os.date("%-I:%M %p"))
+putq("CUR_DATE", string.upper(os.date("%a %-d %b")))
+
+-- today's hi/lo from the next 24 hourly periods (robust, always available)
+do
+  local hi, lo, pmax
+  for i = 1, math.min(24, #hp) do
+    local t = num(hp[i].temperature)
+    if t then hi = (hi and math.max(hi, t)) or t; lo = (lo and math.min(lo, t)) or t end
+    local pp = num((hp[i].probabilityOfPrecipitation or {}).value, 0)
+    pmax = (pmax and math.max(pmax, pp)) or pp
+  end
+  put("TODAY_HI", round(hi)); put("TODAY_LO", round(lo)); put("TODAY_POP", round(pmax or 0))
 end
 
--- hourly: start at the first slot >= current time
-local h = data.hourly
-if type(h) == "table" and type(h.time) == "table" then
-  local start = 1
-  for i = 1, #h.time do
-    if num(h.time[i], 0) >= cts then start = i; break end
+-- sunrise / sunset (NWS has none) — from cached sun.json (UTC), converted to local
+do
+  local sun = readjson(root .. "/cache/sun.json")
+  local r = sun and sun.results
+  if r then
+    if r.sunrise then putq("SUNRISE", utc_to_local(r.sunrise, tzh)) end
+    if r.sunset  then putq("SUNSET",  utc_to_local(r.sunset,  tzh)) end
   end
+end
+
+-- hourly row: next N
+do
   local T, P, PP = {}, {}, {}
-  for k = 0, hours_n - 1 do
-    local i = start + k
-    if h.time[i] then
-      T[#T + 1]  = ldate(num(h.time[i], 0), "%-I%p")
-      P[#P + 1]  = round(num((h.temperature_2m or {})[i], 0))
-      PP[#PP + 1] = round(num((h.precipitation_probability or {})[i], 0))
-    end
+  for i = 1, math.min(hours_n, #hp) do
+    T[#T+1]  = hour_label(hp[i].startTime or "")
+    P[#P+1]  = round(num(hp[i].temperature, 0))
+    PP[#PP+1] = round(num((hp[i].probabilityOfPrecipitation or {}).value, 0))
   end
   put("HOURLY_N", #T)
   putq("H_TIME", table.concat(T, " "))
@@ -126,14 +149,24 @@ if type(h) == "table" and type(h.time) == "table" then
   putq("H_POP",  table.concat(PP, " "))
 end
 
--- daily 5-day
-if type(d) == "table" and type(d.time) == "table" then
+-- 5-day: pair each daytime period (high) with the following night (low)
+do
   local DY, HI, LO, DP = {}, {}, {}, {}
-  for i = 1, #d.time do
-    DY[#DY + 1] = string.upper(ldate(num(d.time[i], 0), "%a"))
-    HI[#HI + 1] = round(num((d.temperature_2m_max or {})[i], 0))
-    LO[#LO + 1] = round(num((d.temperature_2m_min or {})[i], 0))
-    DP[#DP + 1] = round(num((d.precipitation_probability_max or {})[i], 0))
+  local i = 1
+  while i <= #dp and #DY < 5 do
+    local p = dp[i]
+    if p.isDaytime then
+      local hi = round(num(p.temperature))
+      local pop = num((p.probabilityOfPrecipitation or {}).value, 0)
+      local lo = ""
+      local np = dp[i + 1]
+      if np and not np.isDaytime then
+        lo = round(num(np.temperature))
+        pop = math.max(pop, num((np.probabilityOfPrecipitation or {}).value, 0))
+        i = i + 2
+      else i = i + 1 end
+      DY[#DY+1] = weekday(p.startTime or ""); HI[#HI+1] = hi; LO[#LO+1] = lo; DP[#DP+1] = round(pop)
+    else i = i + 1 end
   end
   put("DAILY_N", #DY)
   putq("D_DAY", table.concat(DY, " "))

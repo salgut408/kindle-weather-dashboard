@@ -4,7 +4,7 @@
 # dashboard-loop.sh (don't run this directly).
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 . "$ROOT/config.sh"
-REFRESH_MIN=${REFRESH_MIN:-30}
+REFRESH_MIN=${REFRESH_MIN:-60}
 
 while :; do
   "$ROOT/bin/dashboard.sh"

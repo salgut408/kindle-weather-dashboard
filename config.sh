@@ -2,8 +2,9 @@
 # ===== Kindle Weather Dashboard: configuration (single source of truth) =====
 
 # ---- Location: Chicago, Illinois ----
-LAT="41.8781"
-LON="-87.6298"
+CITY="CHICAGO"
+LAT="41.8450"
+LON="-87.6319"
 TZ_NAME="America/Chicago"
 TEMP_UNIT="fahrenheit"
 WIND_UNIT="mph"

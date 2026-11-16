@@ -11,7 +11,7 @@
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 . "$ROOT/config.sh"
 PIDFILE="$CACHE_DIR/loop.pid"
-export REFRESH_MIN="${REFRESH_MIN:-30}"
+export REFRESH_MIN="${REFRESH_MIN:-60}"
 
 prevent_ss() { lipc-set-prop com.lab126.powerd preventScreenSaver 1 2>/dev/null; }
 allow_ss()   { lipc-set-prop com.lab126.powerd preventScreenSaver 0 2>/dev/null; }
@@ -24,9 +24,9 @@ case "$1" in
     prevent_ss
     # detach the worker so it keeps running after SSH disconnect
     if command -v setsid >/dev/null 2>&1; then
-      setsid "$ROOT/bin/dashboard-worker.sh" >/dev/null 2>&1 &
+      setsid "$ROOT/bin/dashboard-worker.sh" >/dev/null 2>&1 </dev/null &
     else
-      nohup "$ROOT/bin/dashboard-worker.sh" >/dev/null 2>&1 &
+      nohup "$ROOT/bin/dashboard-worker.sh" >/dev/null 2>&1 </dev/null &
     fi
     echo $! > "$PIDFILE"
     echo "started (pid $!) — refresh every ${REFRESH_MIN} min, screensaver off"
